@@ -38,8 +38,9 @@ namespace Tests.Helpers
             }
         }
 
-        public static string ASBMTestRepoWorkingDirPath;
-        public static DirectoryInfo ResourcesDirectory;
+        protected static string ASBMTestRepoWorkingDirPath { private set; get; }
+        protected static string CCTestRepoWorkingDirPath { private set; get; }
+        static DirectoryInfo ResourcesDirectory { set; get; }
 
         static void SetUpTestEnvironment()
         {
@@ -56,6 +57,7 @@ namespace Tests.Helpers
 
             // Setup standard paths to our test repositories
             ASBMTestRepoWorkingDirPath = Path.Combine(ResourcesDirectory.FullName, "asbm_wd");
+            CCTestRepoWorkingDirPath = Path.Combine(ResourcesDirectory.FullName, "commit_counting_wd");
         }
 
         protected SelfCleaningDirectory BuildSelfCleaningDirectory()
