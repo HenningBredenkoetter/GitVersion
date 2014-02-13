@@ -1,4 +1,5 @@
 using System;
+using GitFlowVersion;
 using LibGit2Sharp;
 using NUnit.Framework;
 using Tests.Helpers;
@@ -7,88 +8,19 @@ using Tests.Helpers;
 public class CommitCountingFixture : Lg2sHelperBase
 {
     /*
-        * commit 4d65c519f88773854f9345eaf5dbb30cb49f6a74 (HEAD, develop)
-        |
-        |     P
-        |
-        *   commit 7655537837096d925a4f974232f78ec589d86ebd
-        |\  Merge: 0b7a248 253e943
-        | |
-        | |     Merge branch 'hotfix-1.3.1' into develop
-        | |
-        * |   commit 0b7a2482ab7d167cefa4ecfc106db001dc5c17ff
-        |\ \  Merge: 243f56d 1b9cff4
-        | | |
-        | | |     Merge branch 'feature' into develop
-        | | |
-        | * | commit 1b9cff4589e2f37bc624a18c349b7d95c360aaf7 (feature)
-        | | |
-        | | |     K
-        | | |
-        | * | commit 0491c5dac30d706f4e54c5cb26d082baad8228d1
-        | | |
-        | | |     J
-        | | |
-        * | |   commit 243f56dcdb543688fd0a99bd3e0e72dd9a786603
-        |\ \ \  Merge: 320f4b6 9ea56e0
-        | |/ /
-        |/| |       Merge branch 'release-1.3.0' into develop
-        | | |
-        * | | commit 320f4b6820cf4b0853dc08ac153f04fbd4958200
-        | | |
-        | | |     E
-        | | |
-        | | | *   commit 3b012518e0c89bb753459912738604a915cd70d6 (tag: 1.3.1, master)
-        | | | |\  Merge: 5b84136 253e943
-        | | | |/
-        | | |/|       Merge branch 'hotfix-1.3.1'
-        | | | |
-        | | * | commit 253e94347a96fe4a1eab4e47972afd16f6992528 (hotfix-1.3.1)
-        | | |/
-        | | |       L
-        | | |
-        | | *   commit 5b84136c848fd48f1f8b3fa4e1b767a1f6101279 (tag: 1.3.0)
-        | | |\  Merge: 576a28e 9ea56e0
-        | | |/
-        | |/|       Merge branch 'release-1.3.0'
-        | | |
-        | * | commit 9ea56e0287af87d6b80fad6425949ee6a92fd4c8 (release-1.3.0)
-        | | |
-        | | |     G
-        | | |
-        | * | commit b53054c614d36edc9d1bee8c35cd2ed575a43607
-        |/ /
-        | |       D
-        | |
-        * | commit fab69e28ee35dd912c0c95d5993dd84e4f2bcd92
-        | |
-        | |     B
-        | |
-        | *   commit 576a28e321cd6dc764b52c5fface672fa076f37f (tag: 1.2.1)
-        | |\  Merge: 8c89048 e480263
-        |/ /
-        | |       Merge branch 'hotfix-1.2.1'
-        | |
-        | * commit e480263d0b3eeb3a35e6559032a0fdcb9eb19baa (hotfix-1.2.1)
-        |/
-        |       C
-        |
-        * commit 8c890487ed143d5a72d151e64be1c5ddb314c908 (tag: 1.2.0)
-
-              A
+        hotfix-1.2.1       -----------C--      
+                          /              \     
+        master           A----------------F-----H-------N
+                          \                    / \     /
+        hotfix-1.3.1       \                  /   ----L
+                            \                /         \
+        release-1.3.0        \        -D----G---        \
+                              \      /          \        \
+        develop                -----B----E-------I-----M--O--P
+                                          \           /
+        feature                            -------J-K-
     */
 
-    /*
-     * hotfix1    -C--       ---L-
-     *           /    \     /     \
-     * master  -A------F---H-------N
-     *                    /
-     * release      D----G 
-     *             /       \
-     * develop --B----E-----I-----M----O--P
-     *                 \         /
-     * feature          -----J-K-
-     */
     [Test]
     public void tada()
     {
@@ -97,50 +29,78 @@ public class CommitCountingFixture : Lg2sHelperBase
         using (var repo = new Repository(repoPath))
         {
             ResetToP(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("P", repo);
 
             ResetToO(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("O", repo);
 
             ResetToN(repo);
+            Console.WriteLine(VersionFor(repo, "master"));
             Dump("N", repo);
 
             ResetToM(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("M", repo);
 
             ResetToL(repo);
+            Console.WriteLine(VersionFor(repo, "hotfix-1.3.1"));
             Dump("L", repo);
 
             ResetToK(repo);
+            Console.WriteLine(VersionFor(repo, "feature"));
             Dump("K", repo);
 
             ResetToJ(repo);
+            Console.WriteLine(VersionFor(repo, "feature"));
             Dump("J", repo);
 
             ResetToI(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("I", repo);
 
             ResetToH(repo);
+            Console.WriteLine(VersionFor(repo, "master"));
             Dump("H", repo);
 
             ResetToG(repo);
+            Console.WriteLine(VersionFor(repo, "release-1.3.0"));
             Dump("G", repo);
 
             ResetToF(repo);
+            Console.WriteLine(VersionFor(repo, "master"));
             Dump("F", repo);
 
             ResetToE(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("E", repo);
 
             ResetToD(repo);
+            Console.WriteLine(VersionFor(repo, "release-1.3.0"));
             Dump("D", repo);
 
             ResetToC(repo);
+            Console.WriteLine(VersionFor(repo, "hotfix-1.2.1"));
             Dump("C", repo);
 
             ResetToB(repo);
+            Console.WriteLine(VersionFor(repo, "develop"));
             Dump("B", repo);
         }
+    }
+
+    static string VersionFor(Repository repo, string branchName)
+    {
+        var gvf = new GitVersionFinder();
+        var vab = gvf.FindVersion(new GitVersionContext
+        {
+            CurrentBranch = repo.Branches[branchName],
+            Repository = repo
+        });
+
+        var v = new GitFlowVariableProvider().GetVariables(vab);
+        return v["SemVer"];
     }
 
     void DropTags(Repository repo, params string[] names)
@@ -222,19 +182,7 @@ public class CommitCountingFixture : Lg2sHelperBase
     {
         ResetBranch(repo, "develop", "320f4b6820cf4b0853dc08ac153f04fbd4958200");
     }
-    /*
-    hotfix-1.2.1       -----------C--      
-                      /              \     
-    master           A----------------F-----H-------N
-                      \                    / \     /
-    hotfix-1.3.1       \                  /   ----L
-                        \                /         \
-    release-1.3.0        \        -D----G---        \
-                          \      /          \        \
-    develop                -----B----E-------I-----M--O--P
-                                      \           /
-    feature                            -------J-K-
-    */
+
     void ResetToG(Repository repo)
     {
         ResetBranch(repo, "master", "576a28e321cd6dc764b52c5fface672fa076f37f");
