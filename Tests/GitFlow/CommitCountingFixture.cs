@@ -29,64 +29,49 @@ public class CommitCountingFixture : Lg2sHelperBase
         using (var repo = new Repository(repoPath))
         {
             ResetToP(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("P", repo);
+            Dump("P", "develop", repo);
 
             ResetToO(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("O", repo);
+            Dump("O", "develop", repo);
 
             ResetToN(repo);
-            Console.WriteLine(VersionFor(repo, "master"));
-            Dump("N", repo);
+            Dump("N", "master", repo);
 
             ResetToM(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("M", repo);
+            Dump("M", "develop", repo);
 
             ResetToL(repo);
-            Console.WriteLine(VersionFor(repo, "hotfix-1.3.1"));
-            Dump("L", repo);
+            Dump("L", "hotfix-1.3.1", repo);
 
             ResetToK(repo);
-            Console.WriteLine(VersionFor(repo, "feature"));
-            Dump("K", repo);
+            Dump("K", "feature", repo);
 
             ResetToJ(repo);
-            Console.WriteLine(VersionFor(repo, "feature"));
-            Dump("J", repo);
+            Dump("J", "feature", repo);
 
             ResetToI(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("I", repo);
+            Dump("I", "develop", repo);
 
             ResetToH(repo);
-            Console.WriteLine(VersionFor(repo, "master"));
-            Dump("H", repo);
+            Dump("H", "master", repo);
 
             ResetToG(repo);
-            Console.WriteLine(VersionFor(repo, "release-1.3.0"));
-            Dump("G", repo);
+            Dump("G", "release-1.3.0", repo);
 
             ResetToF(repo);
-            Console.WriteLine(VersionFor(repo, "master"));
-            Dump("F", repo);
+            Dump("F", "master", repo);
 
             ResetToE(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("E", repo);
+            Dump("E", "develop", repo);
 
             ResetToD(repo);
-            Console.WriteLine(VersionFor(repo, "release-1.3.0"));
-            Dump("D", repo);
+            Dump("D", "release-1.3.0", repo);
 
             ResetToC(repo);
-            Console.WriteLine(VersionFor(repo, "hotfix-1.2.1"));
-            Dump("C", repo);
+            Dump("C", "hotfix-1.2.1", repo);
 
             ResetToB(repo);
-            Console.WriteLine(VersionFor(repo, "develop"));
-            Dump("B", repo);
+            Dump("B", "develop", repo);
         }
     }
 
@@ -215,9 +200,9 @@ public class CommitCountingFixture : Lg2sHelperBase
         DropBranches(repo, "hotfix-1.2.1");
     }
 
-    static void Dump(string step, Repository repo)
+    static void Dump(string commit, string branchName, Repository repo)
     {
-        Console.WriteLine("step " + step);
+        Console.WriteLine("Commit {0} ({1}) = {2}", commit, branchName, VersionFor(repo, branchName));
         Console.WriteLine("---");
         foreach (var branch in repo.Branches)
         {
