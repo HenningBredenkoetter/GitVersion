@@ -1,6 +1,7 @@
 namespace GitFlowVersion
 {
     using System.Linq;
+    using LibGit2Sharp;
 
     class DevelopVersionFinder
     {
@@ -22,14 +23,20 @@ namespace GitFlowVersion
 
         SemanticVersion GetSemanticVersion(GitVersionContext context)
         {
-            var versionOnMasterFinder = new VersionOnMasterFinder();
-            var versionFromMaster = versionOnMasterFinder.Execute(context, context.CurrentBranch.Tip.When());
+            var tip = context.CurrentBranch.Tip;
 
-            var developBranch = context.Repository.FindBranch("develop");
-            var preReleasePartOne = developBranch.Commits
-                .SkipWhile(x => x != context.CurrentBranch.Tip)
-                .TakeWhile(x => x.When() >= versionFromMaster.Timestamp)
-                .Count();
+            var versionOnMasterFinder = new VersionOnMasterFinder();
+            var versionFromMaster = versionOnMasterFinder.Execute(context, tip.When());
+
+            var f = new CommitFilter
+            {
+                Since = tip,
+                Until = context.Repository.FindBranch("master").Tip
+            };
+
+            var c = context.Repository.Commits.QueryBy(f);
+            var preReleasePartOne = c.Count();
+
             return new SemanticVersion
             {
                 Major = versionFromMaster.Major,
@@ -37,7 +44,5 @@ namespace GitFlowVersion
                 Tag = Stability.Unstable.ToString().ToLower() + preReleasePartOne
             };
         }
-
-
     }
 }
