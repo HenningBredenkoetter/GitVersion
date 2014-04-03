@@ -31,6 +31,7 @@
 *.vspscc
 .builds
 *.dotCover
+*.orig
 
 ##  If you have NuGet Package Restore enabled, uncomment this
 packages/
@@ -80,3 +81,4 @@ Thumbs.db
 # Folder config file
 Desktop.ini
 
+_NCrunch_GitVersion

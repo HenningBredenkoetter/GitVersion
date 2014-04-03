@@ -1,21 +1,22 @@
 namespace GitVersion
 {
-    using System;
     using System.Linq;
     using LibGit2Sharp;
 
     public static class GitHelper
     {
-        public static void NormalizeGitDirectory(string gitDirectory)
+        public static void NormalizeGitDirectory(string gitDirectory, Arguments arguments, string branch = null)
         {
             using (var repo = new Repository(gitDirectory))
             {
                 var remote = EnsureOnlyOneRemoteIsDefined(repo);
 
+                AddMissingRefSpecs(repo, remote);
+
                 Logger.WriteInfo(string.Format("Fetching from remote '{0}' using the following refspecs: {1}.",
                     remote.Name, string.Join(", ", remote.FetchRefSpecs.Select(r => r.Specification))));
 
-                var fetchOptions = BuildFetchOptions();
+                var fetchOptions = BuildFetchOptions(arguments.Username, arguments.Password);
                 repo.Network.Fetch(remote, fetchOptions);
 
                 CreateMissingLocalBranchesFromRemoteTrackingOnes(repo, remote.Name);
@@ -28,20 +29,42 @@ namespace GitVersion
 
                 Logger.WriteInfo(string.Format("HEAD is detached and points at commit '{0}'.", repo.Refs.Head.TargetIdentifier));
 
-                CreateFakeBranchPointingAtThePullRequestTip(repo);
+                if (branch != null)
+                {
+                    Logger.WriteInfo(string.Format("Checking out local branch 'refs/heads/{0}'.", branch));
+                    repo.Checkout("refs/heads/" + branch);
+                }
+                else
+                {
+                    CreateFakeBranchPointingAtThePullRequestTip(repo);
+                }
             }
         }
 
-        static FetchOptions BuildFetchOptions()
+        static void AddMissingRefSpecs(Repository repo, Remote remote)
         {
-            var username = Environment.GetEnvironmentVariable("GITVERSION_REMOTE_USERNAME");
-            var password = Environment.GetEnvironmentVariable("GITVERSION_REMOTE_PASSWORD");
+            if (remote.FetchRefSpecs.Any(r => r.Source == "refs/heads/*"))
+                return;
 
+            string allBranchesFetchRefSpec = string.Format("+refs/heads/*:refs/remotes/{0}/*", remote.Name);
+
+            Logger.WriteInfo(string.Format("Adding refspec: {0}", allBranchesFetchRefSpec));
+
+            repo.Network.Remotes.Update(remote,
+                r => r.FetchRefSpecs.Add(allBranchesFetchRefSpec));
+        }
+
+        static FetchOptions BuildFetchOptions(string username, string password)
+        {
             var fetchOptions = new FetchOptions();
 
             if (!string.IsNullOrEmpty(username))
             {
-                fetchOptions.Credentials = new Credentials { Username = username, Password = password };
+                fetchOptions.Credentials = new Credentials
+                {
+                    Username = username,
+                    Password = password
+                };
             }
 
             return fetchOptions;
@@ -90,7 +113,7 @@ namespace GitVersion
         static void CreateMissingLocalBranchesFromRemoteTrackingOnes(Repository repo, string remoteName)
         {
             var prefix = string.Format("refs/remotes/{0}/", remoteName);
-            
+
             foreach (var remoteTrackingReference in repo.Refs.FromGlob(prefix + "*"))
             {
                 var localCanonicalName = "refs/heads/" + remoteTrackingReference.CanonicalName.Substring(prefix.Length);

@@ -2,7 +2,7 @@ namespace GitVersion
 {
     public class GitFlowVersionFinder
     {
-        public VersionAndBranch FindVersion(GitVersionContext context)
+        public SemanticVersion FindVersion(GitVersionContext context)
         {
             if (context.CurrentBranch.IsMaster())
             {
@@ -29,7 +29,14 @@ namespace GitVersion
                 return new PullVersionFinder().FindVersion(context);
             }
 
+            if (context.CurrentBranch.IsSupport())
+            {
+                return new SupportVersionFinder().FindVersion(context.Repository, context.CurrentBranch.Tip);
+            }
+
             return new FeatureVersionFinder().FindVersion(context);
         }
     }
+
+
 }

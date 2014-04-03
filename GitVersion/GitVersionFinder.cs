@@ -6,15 +6,17 @@ namespace GitVersion
 
     public class GitVersionFinder
     {
-        public VersionAndBranch FindVersion(GitVersionContext context)
+        public SemanticVersion FindVersion(GitVersionContext context)
         {
             EnsureMainTopologyConstraints(context);
 
             if (ShouldGitHubFlowVersioningSchemeApply(context.Repository))
             {
+                Logger.WriteInfo("GitHubFlow version strategy will be used");
                 return new GitHubFlowVersionFinder().FindVersion(context);
             }
 
+            Logger.WriteInfo("GitFlow version strategy will be used");
             return new GitFlowVersionFinder().FindVersion(context);
         }
 

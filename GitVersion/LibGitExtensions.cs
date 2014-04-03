@@ -13,15 +13,6 @@ namespace GitVersion
             return commit.Committer.When;
         }
 
-        public static string Prefix(this ObjectId objectId)
-        {
-            return objectId.Sha.Substring(0, 8);
-        }
-        public static string Prefix(this Commit commit)
-        {
-            return commit.Sha.Substring(0, 8);
-        }
-
         public static Branch FindBranch(this IRepository repository, string branchName)
         {
             var exact = repository.Branches.FirstOrDefault(x => x.Name == branchName);
@@ -30,19 +21,20 @@ namespace GitVersion
                 return exact;
             }
 
-            return repository.Branches.FirstOrDefault(x => x.Name == "origin/"+branchName);
-         }
+            return repository.Branches.FirstOrDefault(x => x.Name == "origin/" + branchName);
+        }
 
         public static SemanticVersion NewestSemVerTag(this IRepository repository, Commit commit)
         {
             foreach (var tag in repository.TagsByDate(commit))
             {
                 SemanticVersion version;
-                if (SemanticVersionParser.TryParse(tag.Name, out version))
+                if (SemanticVersion.TryParse(tag.Name, out version))
                 {
                     return version;
                 }
             }
+
             return null;
         }
 
@@ -67,7 +59,7 @@ namespace GitVersion
 
             while (target is TagAnnotation)
             {
-                target = ((TagAnnotation) (target)).Target;
+                target = ((TagAnnotation)(target)).Target;
             }
 
             return target;
