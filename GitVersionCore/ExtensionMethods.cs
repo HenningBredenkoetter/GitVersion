@@ -2,10 +2,15 @@ namespace GitVersion
 {
     using System;
     using System.Text;
+    using System.Text.RegularExpressions;
     using JetBrains.Annotations;
 
     static class ExtensionMethods
     {
+        public static bool IsOdd(this int number)
+        {
+            return number % 2 != 0;
+        }
         public static string TrimToFirstLine(this string s)
         {
             return s.Split(new[]
@@ -14,12 +19,14 @@ namespace GitVersion
                 "\n"
             }, StringSplitOptions.None)[0];
         }
+
         [StringFormatMethod("format")]
         public static void AppendLineFormat(this StringBuilder stringBuilder, string format, params object[] args)
         {
             stringBuilder.AppendFormat(format, args);
             stringBuilder.AppendLine();
         }
+
         public static string TrimStart(this string value, string toTrim)
         {
             if (!value.StartsWith(toTrim))
@@ -30,10 +37,7 @@ namespace GitVersion
             return value.Substring(startIndex);
         }
 
-        public static bool IsOdd(this int number)
-        {
-            return number % 2 != 0;
-        }
+
         public static string JsonEncode(this string value)
         {
             if (value != null)
@@ -49,5 +53,11 @@ namespace GitVersion
             }
             return null;
         }
+
+        public static string RegexReplace(this string input, string pattern, string replace, RegexOptions options = RegexOptions.None)
+        {
+            return Regex.Replace(input, pattern, replace, options);
+        }
+
     }
 }
