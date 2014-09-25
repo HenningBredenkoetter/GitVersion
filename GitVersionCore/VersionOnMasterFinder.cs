@@ -58,11 +58,16 @@ namespace GitVersion
         public VersionPoint FindLatestStableTaggedCommitReachableFrom(IRepository repo, Commit commit)
         {
             var masterTip = repo.FindBranch("master").Tip;
-            var ancestor = repo.Commits.FindCommonAncestor(masterTip, commit);
+            var ancestor = repo.Commits.FindMergeBase(masterTip, commit);
 
             var allTags = repo.Tags.ToList();
 
-            foreach (var c in repo.Commits.QueryBy(new CommitFilter { Since = ancestor.Id }))
+            foreach (var c in repo.Commits.QueryBy(new CommitFilter 
+                {
+                    Since = ancestor.Id,
+                    SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+                }
+            ))
             {
                 var vp = RetrieveStableVersionPointFor(allTags, c);
 
@@ -89,7 +94,7 @@ namespace GitVersion
 
             if (tags.Count > 1)
             {
-                throw new ErrorException(
+                throw new WarningException(
                     string.Format("Commit '{0}' bears more than one stable tag: {1}",
                         c.Id.ToString(7), string.Join(", ", tags.Select(t => t.Name))));
             }
@@ -121,7 +126,7 @@ namespace GitVersion
             var target = stableTag.PeeledTarget();
             if (!(target is Commit))
             {
-                throw new ErrorException(
+                throw new WarningException(
                     string.Format("Target '{0}' of Tag '{1}' isn't a Commit.",
                         target.Id.ToString(7), stableTag.Name));
             }

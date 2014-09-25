@@ -1,0 +1,21 @@
+﻿{
+    "Major": 0,
+    "Minor": 2,
+    "Patch": 0,
+    "PreReleaseTag": {
+        "Name": null,
+        "Number": null
+    },
+    "BuildMetaData": {
+        "CommitsSinceTag": null,
+        "Branch": "master",
+        "ReleaseDate": {
+            "OriginalDate": "<date replaced>",
+            "OriginalCommitSha": "000000000000000000000000000000000000000",
+            "Date": "<date replaced>",
+            "CommitSha": "000000000000000000000000000000000000000"
+        },
+        "Sha": "000000000000000000000000000000000000000",
+        "OtherMetaData": null
+    }
+}

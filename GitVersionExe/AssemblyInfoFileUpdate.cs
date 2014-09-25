@@ -4,10 +4,10 @@ namespace GitVersion
     using System.Collections.Generic;
     using System.IO;
 
-    internal class AssemblyInfoFileUpdate : IDisposable
+    class AssemblyInfoFileUpdate : IDisposable
     {
-        private readonly List<Action> _restoreBackupTasks = new List<Action>();
-        private readonly List<Action> _cleanupBackupTasks = new List<Action>();
+        List<Action> restoreBackupTasks = new List<Action>();
+        List<Action> cleanupBackupTasks = new List<Action>();
 
         public AssemblyInfoFileUpdate(Arguments args, string workingDirectory, Dictionary<string, string> variables)
         {
@@ -16,25 +16,24 @@ namespace GitVersion
             if (args.Output != OutputType.Json)
                 Console.WriteLine("Updating assembly info files");
 
-            var assemblyInfoFiles = Directory.GetFiles(workingDirectory, "AssemblyInfo.cs",
-                SearchOption.AllDirectories);
+            var assemblyInfoFiles = GetAssemblyInfoFiles(workingDirectory, args);
 
             foreach (var assemblyInfoFile in assemblyInfoFiles)
             {
                 var backupAssemblyInfo = assemblyInfoFile + ".bak";
                 var localAssemblyInfo = assemblyInfoFile;
                 File.Copy(assemblyInfoFile, backupAssemblyInfo, true);
-                _restoreBackupTasks.Add(() =>
+                restoreBackupTasks.Add(() =>
                 {
                     if (File.Exists(localAssemblyInfo))
                         File.Delete(localAssemblyInfo);
                     File.Move(backupAssemblyInfo, localAssemblyInfo);
                 });
-                _cleanupBackupTasks.Add(() => File.Delete(backupAssemblyInfo));
+                cleanupBackupTasks.Add(() => File.Delete(backupAssemblyInfo));
 
                 var assemblyVersion = string.Format("{0}.{1}.0.0", variables[VariableProvider.Major], variables[VariableProvider.Minor]);
                 var assemblyInfoVersion = variables[VariableProvider.InformationalVersion];
-                var assemblyFileVersion = variables[VariableProvider.AssemblySemVer];
+                var assemblyFileVersion = variables[VariableProvider.MajorMinorPatch];
                 var fileContents = File.ReadAllText(assemblyInfoFile)
                     .RegexReplace(@"AssemblyVersion\(""\d+.\d+.\d+(.\d+|\*)?""\)", string.Format("AssemblyVersion(\"{0}\")", assemblyVersion))
                     .RegexReplace(@"AssemblyInformationalVersion\(""\d+.\d+.\d+(.\d+|\*)?""\)", string.Format("AssemblyInformationalVersion(\"{0}\")", assemblyInfoVersion))
@@ -44,25 +43,38 @@ namespace GitVersion
             }
         }
 
+        static IEnumerable<string> GetAssemblyInfoFiles(string workingDirectory, Arguments args)
+        {
+            if (args.UpdateAssemblyInfoFileName != null)
+            {
+                if (File.Exists(args.UpdateAssemblyInfoFileName))
+                {
+                    return new[] { Path.GetFullPath(args.UpdateAssemblyInfoFileName) };
+                }
+            }
+
+            return Directory.GetFiles(workingDirectory, "AssemblyInfo.cs", SearchOption.AllDirectories);
+        }
+
         public void Dispose()
         {
-            foreach (var restoreBackup in _restoreBackupTasks)
+            foreach (var restoreBackup in restoreBackupTasks)
             {
                 restoreBackup();
             }
 
-            _cleanupBackupTasks.Clear();
-            _restoreBackupTasks.Clear();
+            cleanupBackupTasks.Clear();
+            restoreBackupTasks.Clear();
         }
 
         public void DoNotRestoreAssemblyInfo()
         {
-            foreach (var cleanupBackupTask in _cleanupBackupTasks)
+            foreach (var cleanupBackupTask in cleanupBackupTasks)
             {
                 cleanupBackupTask();
             }
-            _cleanupBackupTasks.Clear();
-            _restoreBackupTasks.Clear();
+            cleanupBackupTasks.Clear();
+            restoreBackupTasks.Clear();
         }
     }
 }

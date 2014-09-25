@@ -10,7 +10,7 @@ namespace GitVersion
             BranchType branchType)
         {
             var ancestor = FindCommonAncestorWithDevelop(context.Repository, context.CurrentBranch, branchType);
-            
+
             if (!IsThereAnyCommitOnTheBranch(context.Repository, context.CurrentBranch))
             {
                 var developVersionFinder = new DevelopVersionFinder();
@@ -18,36 +18,47 @@ namespace GitVersion
             }
 
             var versionOnMasterFinder = new VersionOnMasterFinder();
-            var versionFromMaster = versionOnMasterFinder.Execute(context, context.CurrentBranch.Tip.Committer.When);
+            var versionFromMaster = versionOnMasterFinder.Execute(context, context.CurrentCommit.Committer.When);
 
-            var numberOfCommitsOnBranchSinceCommit = NumberOfCommitsOnBranchSinceCommit(context.CurrentBranch, ancestor);
-            var sha = context.CurrentBranch.Tip.Sha;
+            var numberOfCommitsOnBranchSinceCommit = NumberOfCommitsOnBranchSinceCommit(context, ancestor);
+            var sha = context.CurrentCommit.Sha;
             var releaseDate = ReleaseDateFinder.Execute(context.Repository, sha, 0);
+            var preReleaseTag = context.CurrentBranch.Name
+                .TrimStart(branchType.ToString() + '-')
+                .TrimStart(branchType.ToString() + '/');
             var semanticVersion = new SemanticVersion
             {
                 Major = versionFromMaster.Major,
                 Minor = versionFromMaster.Minor + 1,
                 Patch = 0,
-                PreReleaseTag = "unstable0",
+                PreReleaseTag = preReleaseTag,
                 BuildMetaData = new SemanticVersionBuildMetaData(
                     numberOfCommitsOnBranchSinceCommit,
-                    context.CurrentBranch.Name, sha,
-                    releaseDate.OriginalDate, releaseDate.Date)
+                    context.CurrentBranch.Name, releaseDate)
             };
+
+            semanticVersion.OverrideVersionManuallyIfNeeded(context.Repository);
 
             return semanticVersion;
         }
 
-        protected int NumberOfCommitsOnBranchSinceCommit(Branch branch, Commit commit)
+        int NumberOfCommitsOnBranchSinceCommit(GitVersionContext context, Commit commit)
         {
-            return branch.Commits
-                .TakeWhile(x => x != commit)
+            var qf = new CommitFilter
+            {
+                Since = context.CurrentBranch,
+                Until = commit,
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+            };
+
+            return context.Repository.Commits
+                .QueryBy(qf)
                 .Count();
         }
 
         Commit FindCommonAncestorWithDevelop(IRepository repo, Branch branch, BranchType branchType)
         {
-            var ancestor = repo.Commits.FindCommonAncestor(
+            var ancestor = repo.Commits.FindMergeBase(
                 repo.FindBranch("develop").Tip,
                 branch.Tip);
 
@@ -56,7 +67,7 @@ namespace GitVersion
                 return ancestor;
             }
 
-            throw new ErrorException(
+            throw new WarningException(
                 string.Format("A {0} branch is expected to branch off of 'develop'. "
                               + "However, branch 'develop' and '{1}' do not share a common ancestor."
                     , branchType, branch.Name));

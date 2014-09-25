@@ -5,7 +5,7 @@
 
     public class GitPreparer
     {
-        readonly Arguments arguments;
+        Arguments arguments;
 
         public GitPreparer(Arguments arguments)
         {
@@ -42,25 +42,27 @@
             }
 
             Credentials credentials = null;
-            if (!string.IsNullOrWhiteSpace(arguments.Username) && !string.IsNullOrWhiteSpace(arguments.Password))
+            var authentication = arguments.Authentication;
+            if (!string.IsNullOrWhiteSpace(authentication.Username) && !string.IsNullOrWhiteSpace(authentication.Password))
             {
-                Logger.WriteInfo(string.Format("Setting up credentials using name '{0}'", arguments.Username));
+                Logger.WriteInfo(string.Format("Setting up credentials using name '{0}'", authentication.Username));
 
-                credentials = new Credentials
+                credentials = new UsernamePasswordCredentials
                     {
-                    Username = arguments.Username,
-                    Password = arguments.Password
+                        Username = authentication.Username,
+                        Password = authentication.Password
                 };
             }
 
             Logger.WriteInfo(string.Format("Retrieving git info from url '{0}'", arguments.TargetUrl));
 
-            Repository.Clone(arguments.TargetUrl, gitDirectory, true, false, credentials: credentials);
+            Repository.Clone(arguments.TargetUrl, gitDirectory, 
+                new CloneOptions { IsBare = true, Checkout = false, Credentials = credentials});
 
             if (!string.IsNullOrWhiteSpace(arguments.TargetBranch))
             {
                 // Normalize (download branches) before using the branch
-                GitHelper.NormalizeGitDirectory(gitDirectory, arguments);
+                GitHelper.NormalizeGitDirectory(gitDirectory, arguments.Authentication);
 
                 using (var repository = new Repository(gitDirectory))
                 {
@@ -71,6 +73,8 @@
 
                         repository.Refs.UpdateTarget("HEAD", targetBranchName);
                     }
+
+                    repository.CheckoutFilesIfExist("NextVersion.txt");
                 }
             }
 

@@ -8,13 +8,14 @@ namespace GitVersion
         public SemanticVersion FindVersion(GitVersionContext context)
         {
             var versionOnMasterFinder = new VersionOnMasterFinder();
-            var tip = context.CurrentBranch.Tip;
+            var tip = context.CurrentCommit;
             var versionFromMaster = versionOnMasterFinder.Execute(context, tip.When());
 
             var f = new CommitFilter
             {
                 Since = tip,
-                Until = context.Repository.FindBranch("master").Tip
+                Until = context.Repository.FindBranch("master").Tip,
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
             };
 
             var c = context.Repository.Commits.QueryBy(f);
@@ -27,11 +28,12 @@ namespace GitVersion
                 Minor = versionFromMaster.Minor + 1,
                 Patch = 0,
                 PreReleaseTag = "unstable" + numberOfCommitsSinceRelease,
-                BuildMetaData = new SemanticVersionBuildMetaData(numberOfCommitsSinceRelease, context.CurrentBranch.Name, tip.Sha,
-                    releaseDate.OriginalDate, releaseDate.Date),
+                BuildMetaData = new SemanticVersionBuildMetaData(numberOfCommitsSinceRelease, context.CurrentBranch.Name, releaseDate),
             };
+
+            semanticVersion.OverrideVersionManuallyIfNeeded(context.Repository);
+
             return semanticVersion;
         }
-
     }
 }

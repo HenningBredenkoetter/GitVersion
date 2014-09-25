@@ -3,10 +3,14 @@ namespace GitVersion
     using System;
     using System.Text.RegularExpressions;
 
-    public class SemanticVersionPreReleaseTag : IFormattable, IComparable<SemanticVersionPreReleaseTag>
+    public class SemanticVersionPreReleaseTag : 
+        IFormattable, IComparable<SemanticVersionPreReleaseTag>, IEquatable<SemanticVersionPreReleaseTag>
     {
         public string Name;
         public int? Number;
+
+        static LambdaEqualityHelper<SemanticVersionPreReleaseTag> equalityHelper =
+           new LambdaEqualityHelper<SemanticVersionPreReleaseTag>(x => x.Name, x => x.Number);
 
         public SemanticVersionPreReleaseTag()
         {
@@ -18,26 +22,19 @@ namespace GitVersion
             Number = number;
         }
 
-        protected bool Equals(SemanticVersionPreReleaseTag other)
-        {
-            return string.Equals(Name, other.Name) && Number == other.Number;
-        }
-
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj))
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-            if (obj.GetType() != GetType())
-            {
-                return false;
-            }
-            return Equals((SemanticVersionPreReleaseTag) obj);
+            return Equals(obj as SemanticVersionPreReleaseTag);
+        }
+
+        public bool Equals(SemanticVersionPreReleaseTag other)
+        {
+            return equalityHelper.Equals(this, other);
+        }
+
+        public override int GetHashCode()
+        {
+            return equalityHelper.GetHashCode(this);
         }
 
         public static bool operator ==(SemanticVersionPreReleaseTag left, SemanticVersionPreReleaseTag right)
@@ -100,6 +97,15 @@ namespace GitVersion
 
         public int CompareTo(SemanticVersionPreReleaseTag other)
         {
+            if (!HasTag() && other.HasTag())
+            {
+                return 1;
+            }
+            if (HasTag() && !other.HasTag())
+            {
+                return -1;
+            }
+
             var nameComparison = StringComparer.InvariantCultureIgnoreCase.Compare(Name, other);
             if (nameComparison != 0)
                 return nameComparison;
@@ -115,7 +121,8 @@ namespace GitVersion
         /// <summary>
         /// Default formats:
         /// <para>t - SemVer 2.0 formatted tag [beta.1]</para>
-        /// <para>p - SemVer 2.0 tag with the tag number padded. [beta.0001]</para>
+        /// <para>l - Legacy SemVer tag with the tag number padded. [beta1]</para>
+        /// <para>lp - Legacy SemVer tag with the tag number padded. [beta0001]</para>
         /// </summary>
         public string ToString(string format, IFormatProvider formatProvider = null)
         {
@@ -134,11 +141,30 @@ namespace GitVersion
             {
                 case "t":
                     return Number.HasValue ? string.Format("{0}.{1}", Name, Number) : Name;
-                case "p":
-                    return Number.HasValue ? string.Format("{0}.{1}", Name, Number.Value.ToString("D4")) : Name;
+                case "l":
+                    return Number.HasValue ? FormatLegacy(GetLegacyName(), Number.ToString()) : FormatLegacy(GetLegacyName());
+                case "lp":
+                    return Number.HasValue ? FormatLegacy(GetLegacyName(), Number.Value.ToString("D4")) : FormatLegacy(GetLegacyName());
                 default:
                     throw new ArgumentException("Unknown format", "format");
             }
+        }
+
+        string FormatLegacy(string tag, string number = null)
+        {
+            var tagLength = tag.Length;
+            var numberLength = number == null ? 0 : number.Length;
+
+            if (tagLength + numberLength > 20)
+                return string.Format("{0}{1}", tag.Substring(0, 20 - numberLength), number);
+
+            return string.Format("{0}{1}", tag, number);
+        }
+
+        string GetLegacyName()
+        {
+            var firstPart = Name.Split('_')[0];
+            return firstPart.Replace("-", string.Empty).Replace(".", string.Empty);
         }
 
         public bool HasTag()

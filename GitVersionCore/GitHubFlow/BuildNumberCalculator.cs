@@ -10,10 +10,7 @@ namespace GitVersion
         LastTaggedReleaseFinder lastTaggedReleaseFinder;
         IRepository gitRepo;
 
-        public BuildNumberCalculator(
-            NextSemverCalculator nextSemverCalculator,
-            LastTaggedReleaseFinder lastTaggedReleaseFinder,
-            IRepository gitRepo)
+        public BuildNumberCalculator(NextSemverCalculator nextSemverCalculator, LastTaggedReleaseFinder lastTaggedReleaseFinder, IRepository gitRepo)
         {
             this.nextSemverCalculator = nextSemverCalculator;
             this.lastTaggedReleaseFinder = lastTaggedReleaseFinder;
@@ -23,16 +20,15 @@ namespace GitVersion
         public SemanticVersion GetBuildNumber(GitVersionContext context)
         {
             var commit = lastTaggedReleaseFinder.GetVersion().Commit;
-            var commitsSinceLastRelease = NumberOfCommitsOnBranchSinceCommit(gitRepo.Head, commit);
+            var commitsSinceLastRelease = NumberOfCommitsOnBranchSinceCommit(context, commit);
             var semanticVersion = nextSemverCalculator.NextVersion();
 
-            var sha = context.CurrentBranch.Tip.Sha;
+            var sha = context.CurrentCommit.Sha;
             var releaseDate = ReleaseDateFinder.Execute(context.Repository, sha, semanticVersion.Patch);
 
             // TODO Need a way of setting this in a cross cutting way
-            semanticVersion.BuildMetaData = new SemanticVersionBuildMetaData(commitsSinceLastRelease, 
-                context.CurrentBranch.Name, sha,
-                releaseDate.OriginalDate, releaseDate.Date);
+            semanticVersion.BuildMetaData = new SemanticVersionBuildMetaData(commitsSinceLastRelease,
+                context.CurrentBranch.Name, releaseDate);
             if (context.CurrentBranch.IsPullRequest())
             {
                 EnsurePullBranchShareACommonAncestorWithMaster(gitRepo, gitRepo.Head);
@@ -44,17 +40,22 @@ namespace GitVersion
             return semanticVersion;
         }
 
-        int NumberOfCommitsOnBranchSinceCommit(Branch branch, Commit commit)
+        int NumberOfCommitsOnBranchSinceCommit(GitVersionContext context, Commit commit)
         {
-            return branch.Commits
-                .TakeWhile(x => x != commit)
-                .Count();
+            var qf = new CommitFilter
+            {
+                Since = context.CurrentCommit,
+                Until = commit,
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+            };
+
+            return context.Repository.Commits.QueryBy(qf).Count();
         }
 
         void EnsurePullBranchShareACommonAncestorWithMaster(IRepository repository, Branch pullBranch)
         {
             var masterTip = repository.FindBranch("master").Tip;
-            var ancestor = repository.Commits.FindCommonAncestor(masterTip, pullBranch.Tip);
+            var ancestor = repository.Commits.FindMergeBase(masterTip, pullBranch.Tip);
 
             if (ancestor != null)
             {
@@ -65,47 +66,17 @@ namespace GitVersion
             throw new Exception(message);
         }
 
-        // TODO refactor to remove duplication
         string ExtractIssueNumber(GitVersionContext context)
         {
-            const string prefix = "/pull/";
-            var pullRequestBranch = context.CurrentBranch;
+            var issueNumber = GitHelper.ExtractIssueNumber(context.CurrentBranch.CanonicalName);
 
-            var start = pullRequestBranch.CanonicalName.IndexOf(prefix, StringComparison.Ordinal);
-            var end = pullRequestBranch.CanonicalName.LastIndexOf("/merge", pullRequestBranch.CanonicalName.Length - 1,
-                StringComparison.Ordinal);
-
-            string issueNumber = null;
-
-            if (start != -1 && end != -1 && start + prefix.Length <= end)
+            if (!GitHelper.LooksLikeAValidPullRequestNumber(issueNumber))
             {
-                start += prefix.Length;
-                issueNumber = pullRequestBranch.CanonicalName.Substring(start, end - start);
-            }
-
-            if (!LooksLikeAValidPullRequestNumber(issueNumber))
-            {
-                var message = string.Format("Unable to extract pull request number from '{0}'.", pullRequestBranch.CanonicalName);
-                throw new ErrorException(message);
+                var message = string.Format("Unable to extract pull request number from '{0}'.", context.CurrentBranch.CanonicalName);
+                throw new WarningException(message);
             }
 
             return issueNumber;
-        }
-
-        bool LooksLikeAValidPullRequestNumber(string issueNumber)
-        {
-            if (string.IsNullOrEmpty(issueNumber))
-            {
-                return false;
-            }
-
-            uint res;
-            if (!uint.TryParse(issueNumber, out res))
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }

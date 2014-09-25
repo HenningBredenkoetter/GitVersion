@@ -4,11 +4,11 @@
 
     public class TeamCity : BuildServerBase
     {
-        readonly Arguments arguments;
+        Authentication authentication;
 
-        public TeamCity(Arguments arguments)
+        public TeamCity(Authentication authentication)
         {
-            this.arguments = arguments;
+            this.authentication = authentication;
         }
 
         public override bool CanApplyToCurrentContext()
@@ -20,19 +20,18 @@
         {
             if (string.IsNullOrEmpty(gitDirectory))
             {
-                throw new ErrorException("Failed to find .git directory on agent. Please make sure agent checkout mode is enabled for you VCS roots - http://confluence.jetbrains.com/display/TCD8/VCS+Checkout+Mode");
+                throw new WarningException("Failed to find .git directory on agent. Please make sure agent checkout mode is enabled for you VCS roots - http://confluence.jetbrains.com/display/TCD8/VCS+Checkout+Mode");
             }
 
-            GitHelper.NormalizeGitDirectory(gitDirectory, arguments);
+            GitHelper.NormalizeGitDirectory(gitDirectory, authentication);
         }
 
         public override string[] GenerateSetParameterMessage(string name, string value)
         {
             return new[]
             {
-                // Note: see discussion at https://github.com/Particular/GitVersion/issues/90, keep GitFlowVersion for now
-                string.Format("##teamcity[setParameter name='GitFlowVersion.{0}' value='{1}']", name, EscapeValue(value)),
-                string.Format("##teamcity[setParameter name='GitVersion.{0}' value='{1}']", name, EscapeValue(value))
+                string.Format("##teamcity[setParameter name='GitVersion.{0}' value='{1}']", name, EscapeValue(value)),
+                string.Format("##teamcity[setParameter name='system.GitVersion.{0}' value='{1}']", name, EscapeValue(value))
             };
         }
 

@@ -15,6 +15,8 @@ namespace GitVersion
             var nbHotfixCommits = NumberOfCommitsInBranchNotKnownFromBaseBranch(context.Repository, context.CurrentBranch, branchType, baseBranchName);
 
             var versionString = context.CurrentBranch.GetSuffix(branchType);
+            if (!versionString.Contains("."))
+                return new SemanticVersion();
             var version = SemanticVersion.Parse(versionString);
 
             EnsureVersionIsValid(version, context.CurrentBranch, branchType);
@@ -22,11 +24,13 @@ namespace GitVersion
             if (branchType == BranchType.Hotfix)
                 version.PreReleaseTag = "beta.1";
             if (branchType == BranchType.Release)
-                version.PreReleaseTag = "beta1";
+                version.PreReleaseTag = "beta.1";
+            if (branchType == BranchType.Unknown)
+                version.PreReleaseTag = context.CurrentBranch.Name.Replace("-" + versionString, string.Empty) + ".1";
 
             var tagVersion = RetrieveMostRecentOptionalTagVersion(context.Repository, version, context.CurrentBranch.Commits.Take(nbHotfixCommits + 1));
 
-            var sha = context.CurrentBranch.Tip.Sha;
+            var sha = context.CurrentCommit.Sha;
             var releaseDate = ReleaseDateFinder.Execute(context.Repository, sha, version.Patch);
             var semanticVersion = new SemanticVersion
             {
@@ -35,14 +39,17 @@ namespace GitVersion
                 Patch = version.Patch,
                 PreReleaseTag = version.PreReleaseTag,
                 BuildMetaData = new SemanticVersionBuildMetaData(
-                    nbHotfixCommits, context.CurrentBranch.Name, sha,
-                    releaseDate.OriginalDate, releaseDate.Date)
+                    nbHotfixCommits, context.CurrentBranch.Name, releaseDate)
             };
 
             if (tagVersion != null)
             {
-                tagVersion.PreReleaseTag.Number++;
-                semanticVersion.PreReleaseTag = tagVersion.PreReleaseTag;
+                //If the tag is on the eact commit then dont bump the PreReleaseTag 
+                if (context.CurrentCommit.Sha != tagVersion.Commit.Sha)
+                {
+                    tagVersion.SemVer.PreReleaseTag.Number++;
+                }
+                semanticVersion.PreReleaseTag = tagVersion.SemVer.PreReleaseTag;
             }
 
             return semanticVersion;
@@ -68,7 +75,7 @@ namespace GitVersion
             return false;
         }
 
-        SemanticVersion RetrieveMostRecentOptionalTagVersion(
+        VersionTaggedCommit RetrieveMostRecentOptionalTagVersion(
             IRepository repository, SemanticVersion branchVersion, IEnumerable<Commit> take)
         {
             foreach (var commit in take)
@@ -88,7 +95,7 @@ namespace GitVersion
                         continue;
                     }
 
-                    return version;
+                    return new VersionTaggedCommit(commit, version);
                 }
             }
 
@@ -102,7 +109,7 @@ namespace GitVersion
 
             if (version.PreReleaseTag.HasTag())
             {
-                throw new ErrorException(msg + string.Format("Supported format is '{0}-Major.Minor.Patch'.", branchType.ToString().ToLowerInvariant()));
+                throw new WarningException(msg + string.Format("Supported format is '{0}-Major.Minor.Patch'.", branchType.ToString().ToLowerInvariant()));
             }
 
             switch (branchType)
@@ -110,7 +117,7 @@ namespace GitVersion
                 case BranchType.Hotfix:
                     if (version.Patch == 0)
                     {
-                        throw new ErrorException(msg + "A patch segment different than zero is required.");
+                        throw new WarningException(msg + "A patch segment different than zero is required.");
                     }
 
                     break;
@@ -118,9 +125,12 @@ namespace GitVersion
                 case BranchType.Release:
                     if (version.Patch != 0)
                     {
-                        throw new ErrorException(msg + "A patch segment equals to zero is required.");
+                        throw new WarningException(msg + "A patch segment equals to zero is required.");
                     }
 
+                    break;
+
+                case BranchType.Unknown:
                     break;
 
                 default:
@@ -141,21 +151,21 @@ namespace GitVersion
                 return 0;
             }
 
-            var ancestor = repo.Commits.FindCommonAncestor(
+            var ancestor = repo.Commits.FindMergeBase(
                 baseTip,
                 branch.Tip);
 
             if (ancestor == null)
             {
                 var message = string.Format("A {0} branch is expected to branch off of '{1}'. However, branch '{1}' and '{2}' do not share a common ancestor.", branchType, baseBranchName, branch.Name);
-                throw new ErrorException(message);
+                throw new WarningException(message);
             }
 
             var filter = new CommitFilter
                          {
                              Since = branch.Tip,
-                             Until = ancestor
-
+                             Until = ancestor,
+                             SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
                          };
 
             return repo.Commits.QueryBy(filter).Count();

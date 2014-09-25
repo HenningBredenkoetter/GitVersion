@@ -8,7 +8,6 @@
 
     public class GetVersion : Task
     {
-
         [Required]
         public string SolutionDirectory { get; set; }
 
@@ -40,16 +39,16 @@
         public string SemVer { get; set; }
 
         [Output]
-        public string SemVerPadded { get; set; }
+        public string LegacySemVer { get; set; }
+
+        [Output]
+        public string LegacySemVerPadded { get; set; }
 
         [Output]
         public string AssemblySemVer { get; set; }
 
         [Output]
         public string FullSemVer { get; set; }
-
-        [Output]
-        public string FullSemVerPadded { get; set; }
 
         [Output]
         public string InformationalVersion { get; set; }
@@ -65,6 +64,15 @@
 
         [Output]
         public string Sha { get; set; }
+
+        [Output]
+        public string OriginalRelease { get; set; }
+
+        [Output]
+        public string NuGetVersionV2 { get; set; }
+
+        [Output]
+        public string NuGetVersion { get; set; }
 
         TaskLogger logger;
 
@@ -91,10 +99,10 @@
                 }
                 return true;
             }
-            catch (ErrorException errorException)
+            catch (WarningException errorException)
             {
-                logger.LogError(errorException.Message);
-                return false;
+                logger.LogWarning(errorException.Message);
+                return true;
             }
             catch (Exception exception)
             {
